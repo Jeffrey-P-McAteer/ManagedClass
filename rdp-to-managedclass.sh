@@ -8,7 +8,9 @@
 # setup, I just enjoy saving keystrokes
 # and not having to lookup IP addresses.
 
-SVR_IP=$(lanipof 'd5:f8:40')
+
+#SVR_IP=$(lanipof 'd5:f8:40') # Wifi
+SVR_IP=$(lanipof '09:d8:37') # One of the Ethernet NICs
 
 echo "SVR_IP=$SVR_IP"
 

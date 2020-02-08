@@ -175,16 +175,65 @@ I also ran `xfreerdp` as `daemon` once to trust the certificate always:
 sudo -u daemon xfreerdp /v:127.0.0.1
 ```
 
-## Samba 
-
 ## DHCP Server
+
+We are going to reconfigure the wifi card on the server to be a WiFi access point
+suitable for student laptops/tablets/phones to connect to for access to their
+offline learning environment. To make the offline environment online simply connect
+the server to an internet connection, but note that this may be prohibited by
+your organization. Always check before connecting a server to your organization's network.
+
+| Hardware/Config item | Value |
+|----------|--------------:|
+| NIC name | `wlp0s29u1u5` |
+| SSID     | `ManagedClass` |
+| Wifi Password | `classPW01` |
+
+
+```bash
+yay -S hostapd create_ap
+sudo systemctl diable hostapd
+sudo systemctl stop hostapd
+sudo create_ap wlp0s29u1u5 enp9s0 ManagedClass classPW01
+```
+
+Because `create_ap` must be run before the AP is available we will create a service for it:
+
+```bash
+vim /etc/systemd/system/managed-class-ap.service
+```
+
+which should contain
+
+```
+[Unit]
+Description=ManagedClass wireless access point
+
+[Service]
+User=root
+Type=simple
+ExecStartPre=/sbin/nmcli r wifi off
+ExecStartPre=/sbin/rfkill unblock wlan
+ExecStart=/sbin/create_ap wlp0s29u1u5 enp9s0 ManagedClass classPW01
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+And enable it:
+
+```bash
+sudo systemctl enable --now managed-class-ap
+```
 
 ## Graphical User Management
 
 ```bash
 yay -S webmin
 sudo systemctl enable --now webmin
-# Webmin will listen on 0.0.0.0:10000 and only
+# Webmin will listen on https://0.0.0.0:10000 and only
 # the root user is allowed to login to manage the system.
 ```
 
