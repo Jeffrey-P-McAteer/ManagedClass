@@ -21,24 +21,11 @@ It makes the following resource assumptions:
 
 ## Beginning
 
-To start with you'll need a USB drive (2gb will do) and a computer capable of writing a binary file to a USB drive.
+To start with you'll need a USB drive (4gb will do) and a computer capable of writing a binary file to a USB drive.
 
 I will be using Arch Linux because that's what cool programmers use, but each of the steps
 will have enough instructions you should be able to google around to replace eg `dd` with the equivelant
 operation on your OS. As always, contact your OS support if they forgot to give you a user manual or if you lost your copy of the user manual. (The Arch user manual is at https://wiki.archlinux.org/index.php/)
-
-## Server Management
-
-I did not sit down with a keyboard + monitor, I used `ipmiview` to setup
-my server. As a note to anyone else doing this, the default IP is 192.168.1.99 for SuperMicro servers.
-
-To quickly put your ethernet port in the right place:
-
-```bash
-sudo ip link set enp4s0 up
-sudo ip a add 192.168.1.11/24 dev enp4s0
-ping -c 1 192.168.1.99 # should return something
-```
 
 ## Create Install Media
 
@@ -50,9 +37,9 @@ Actually, to save on setup headache we'll be using Manjaro which
 is an extension of Arch with a nice GUI.
 
 ```bash
-# Download this: https://manjaro.org/download/official/architect/
+# Download this: https://manjaro.org/download/community/i3/
 # Remember to replace /dev/sda with your USB drive!
-sudo dd if=/path/to/manjaro-architect-18.1.0-stable-x86_64.iso of=/dev/sda status=progress oflag=sync
+sudo dd if=/path/to/manjaro-i3-18.1.5-191229-linux54.iso of=/dev/sda status=progress oflag=sync
 ```
 
 ## Boot install media on server
@@ -68,12 +55,44 @@ can set it up a bazillion ways, so I'm going to link
 to the thing I followed and then drop decisions I made
 specific to ManagedClass here: https://wiki.archlinux.org/index.php/installation_guide
 
+A manjaro-specific resource: https://forum.manjaro.org/t/installation-with-manjaro-architect-iso/20429
 
+Essentially everything needs to be setup so at the end you have:
 
+ - hard drive you can boot to
+ - one non-root admin account (I called mine `admin`)
+ - `yay`, `base-devel`, and LXDE (though these may be added after the initial install)
 
-## Cockpit
+## Initial Package Updates
+
+Arch is a rolling release system, so you will see lots of things
+break (eg outdated signatures for developers) if your packages are old.
+
+```bash
+yay -Syu
+```
+
+Will make sure your system is up-to-date.
+
+## LXDE
+
+```bash
+yay -S lxde
+```
 
 ## RDP Server
+
+```bash
+yay -S xrdp xorgxrdp-git
+sudo systemctl enable --now xrdp
+sudo systemctl enable --now xrdp-sesman
+```
+
+Edit (creating if nonexistent) `/etc/X11/Xwrapper.config` and add `allowed_users=anybody`
+
+Edit `/etc/X11/xinit/xinitrc` and make it launch LXDE: `exec startlxde`
+
+If a user account does not launch LXDE, remove their `.xinitrc` file (or rename it to `.old.xinitrc`)
 
 ## Apache Guacamole Server
 
@@ -82,15 +101,91 @@ There is a concern that students may not have access to an RDP client.
 At a performance cost we will add an Apache Guacamole server which
 may be accessed via a web browser.
 
+```bash
+yay -S guacamole-server guacamole-client
+sudo systemctl enable --now guacd
+sudo systemctl enable --now tomcat8
+```
 
+Tomcat will run on `0.0.0.0:8080` and the guacamole client
+is accessible at `http://your-ip:8080/guacamole/`
 
-## NginX Server
+Guacamole uses a .xml file at `/usr/share/tomcat8/.guacamole/user-mapping.xml`
+to authenticate users. To save ourselves from having to copy 30/60/90/120 usernames
+and passwords we will build and install this plugin: https://github.com/voegelas/guacamole-auth-pam
+
+```bash
+wget https://github.com/voegelas/guacamole-auth-pam/releases/download/v1.4/guacamole-auth-pam-1.0.0.jar
+sudo mkdir /usr/share/tomcat8/.guacamole/extensions
+sudo cp guacamole-auth-pam-1.0.0.jar /usr/share/tomcat8/.guacamole/extensions
+sudo vim /etc/pam.d/guacamole
+sudo groupadd shadow
+sudo chown root:shadow /etc/shadow
+sudo chmod 660 /etc/shadow
+sudo usermod -a -G shadow tomcat8
+sudo vim /usr/share/tomcat8/.guacamole/unix-user-mapping.xml
+```
+
+`/etc/pam.d/guacamole` should contain:
+
+```
+#%PAM-1.0
+auth      include  system-remote-login
+account   include  system-remote-login
+password  include  system-remote-login
+session   include  system-remote-login
+
+```
+
+`unix-user-mapping.xml` should contain:
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<unix-user-mapping serviceName="guacamole">
+    <config name="RDP Connection" protocol="rdp">
+        <param name="hostname" value="localhost" />
+        <param name="username" value="${GUAC_USERNAME}" />
+        <param name="password" value="${GUAC_PASSWORD}" />
+        <param name="security" value="nla" />
+        <param name="server-layout" value="en-us-qwerty" />
+    </config>
+
+    <group name="users">
+        <config-ref name="RDP Connection" />
+    </group>
+</unix-user-mapping>
+```
+
+If a user cannot login ensure they are part of the `users` group:
+
+```bash
+sudo usermod -a -G users $(whoami)
+```
 
 ## Samba 
 
 ## DHCP Server
 
+## Graphical User Management
 
+```bash
+yay -S webmin
+sudo systemctl enable --now webmin
+# Webmin will listen on 0.0.0.0:10000 and only
+# the root user is allowed to login to manage the system.
+```
+
+## NginX Server
+
+To provide documentation and links to all the
+services we'll add an nginx server which listens to
+`0.0.0.0:80` and write some `.html` to say hello to
+our students.
+
+```bash
+yay -S nginx
+sudo systemctl enable --now nginx
+```
 
 
 
