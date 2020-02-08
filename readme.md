@@ -214,7 +214,7 @@ User=root
 Type=simple
 ExecStartPre=/sbin/nmcli r wifi off
 ExecStartPre=/sbin/rfkill unblock wlan
-ExecStart=/sbin/create_ap wlp0s29u1u5 enp9s0 ManagedClass classPW01
+ExecStart=/sbin/create_ap --hidden wlp0s29u1u5 enp9s0 ManagedClass classPW01
 Restart=always
 RestartSec=3
 
