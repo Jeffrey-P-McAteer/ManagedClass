@@ -102,7 +102,7 @@ At a performance cost we will add an Apache Guacamole server which
 may be accessed via a web browser.
 
 ```bash
-yay -S guacamole-server guacamole-client
+yay -S freerdp guacamole-server guacamole-client
 sudo systemctl enable --now guacd
 sudo systemctl enable --now tomcat8
 ```
@@ -146,8 +146,10 @@ session   include  system-remote-login
         <param name="hostname" value="localhost" />
         <param name="username" value="${GUAC_USERNAME}" />
         <param name="password" value="${GUAC_PASSWORD}" />
-        <param name="security" value="nla" />
+        <param name="security" value="any" />
         <param name="server-layout" value="en-us-qwerty" />
+        <param name="ignore-cert" value="true" />
+        <param name="disable-auth" value="true" />
     </config>
 
     <group name="users">
@@ -160,6 +162,17 @@ If a user cannot login ensure they are part of the `users` group:
 
 ```bash
 sudo usermod -a -G users $(whoami)
+```
+
+I also modified the home directory of the `daemon` user from `/` to `/tmp` because
+`systemctl status guacd` was showing an error writing temporary files to $HOME.
+
+You can do this by very carefully modifying the `daemon` account in `/etc/passwd`.
+
+I also ran `xfreerdp` as `daemon` once to trust the certificate always:
+
+```bash
+sudo -u daemon xfreerdp /v:127.0.0.1
 ```
 
 ## Samba 
