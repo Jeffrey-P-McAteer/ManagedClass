@@ -249,6 +249,18 @@ yay -S nginx
 sudo systemctl enable --now nginx
 ```
 
+Edit `/usr/share/nginx/html/index.html` and put
+links to the RDP server and Guacamole.
+
+
+# Connecting
+
+Upon powering on the server you should be able to connect
+any laptop/tablet/phone to the wireless network "ManagedClass"
+with WPA2/PSK security and the password "classPW01".
+
+After connecting browse to http://192.168.12.1 which will
+display the NGINX webpage with links to everything else.
 
 
 
